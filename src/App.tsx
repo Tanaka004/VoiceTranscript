@@ -107,7 +107,7 @@ function App() {
             <div className="p-3 bg-blue-600 rounded-full">
               <Mic className="text-white" size={32} />
             </div>
-            <h1 className="text-4xl font-bold text-white">ボイスレコーダー</h1>
+            <h1 className="text-4xl font-bold text-white">VoiceTranscript</h1>
           </div>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
             リアルタイム文字起こし機能付きの音声録音アプリ。
