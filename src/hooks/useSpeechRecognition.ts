@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { TranscriptionState } from '../types/Recording';
+import { saveRecording } from '../utils/storage';
+import { v4 as uuidv4 } from 'uuid';
 
 // Extend the Window interface to include webkitSpeechRecognition
 declare global {
@@ -19,11 +21,13 @@ export const useSpeechRecognition = () => {
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isManualStop = useRef(false);
+  const recId = useRef<string>(uuidv4());
 
   const isSupported = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
 
-  const initRecognition = useCallback(() => {
-    if (!isSupported) return null;
+  // 初回のみインスタンス生成＆イベント登録
+  useEffect(() => {
+    if (!isSupported) return;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -40,18 +44,15 @@ export const useSpeechRecognition = () => {
     recognition.onresult = (event) => {
       let finalTranscript = '';
       let interimTranscript = '';
-      let maxConfidence = 0;
+      let confidence = 0;
 
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
         const result = event.results[i];
-        const transcript = result[0].transcript;
-        const confidence = result[0].confidence || 0;
-
         if (result.isFinal) {
-          finalTranscript += transcript + ' ';
-          maxConfidence = Math.max(maxConfidence, confidence);
+          finalTranscript += result[0].transcript;
+          confidence = result[0].confidence;
         } else {
-          interimTranscript += transcript;
+          interimTranscript += result[0].transcript;
         }
       }
 
@@ -59,18 +60,29 @@ export const useSpeechRecognition = () => {
         ...prev,
         transcript: prev.transcript + finalTranscript,
         interimTranscript,
-        confidence: maxConfidence || prev.confidence,
+        confidence: confidence || prev.confidence,
       }));
+
+      // 保存頻度を下げたい場合はdebounce等を検討
+      saveRecording({
+        id: recId.current,
+        title: 'リアルタイム文字起こし',
+        createdAt: new Date(),
+        duration: 0,
+        transcription: finalTranscript || interimTranscript,
+        audioBlob: new Blob(),
+        audioUrl: '',
+        size: 0
+      });
     };
 
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
-      
-      // Handle specific error cases
+
       if (event.error === 'not-allowed') {
         alert('Microphone access denied. Please allow microphone access and try again.');
       } else if (event.error === 'no-speech') {
-        // Automatically restart on no-speech error if not manually stopped
+        // 自動再開
         if (!isManualStop.current && transcriptionState.isListening) {
           setTimeout(() => {
             if (recognitionRef.current && !isManualStop.current) {
@@ -86,18 +98,20 @@ export const useSpeechRecognition = () => {
     };
 
     recognition.onend = () => {
-      setTranscriptionState(prev => ({ 
-        ...prev, 
+      setTranscriptionState(prev => ({
+        ...prev,
         isListening: false,
-        interimTranscript: '',
       }));
-
-      // Automatically restart if not manually stopped
-      if (!isManualStop.current && transcriptionState.isListening) {
+      // ★自動再開
+      if (!isManualStop.current) {
         setTimeout(() => {
           if (recognitionRef.current && !isManualStop.current) {
             try {
               recognitionRef.current.start();
+              setTranscriptionState(prev => ({
+                ...prev,
+                isListening: true,
+              }));
             } catch (error) {
               console.error('Failed to restart recognition:', error);
             }
@@ -106,8 +120,14 @@ export const useSpeechRecognition = () => {
       }
     };
 
-    return recognition;
-  }, [isSupported, transcriptionState.isListening]);
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognition.stop();
+      recognitionRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupported]);
 
   const startListening = useCallback(() => {
     if (!isSupported) {
@@ -116,35 +136,19 @@ export const useSpeechRecognition = () => {
     }
 
     try {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-
-      const recognition = initRecognition();
-      if (!recognition) return;
-
-      recognitionRef.current = recognition;
       isManualStop.current = false;
-      
-      setTranscriptionState(prev => ({
-        ...prev,
-        transcript: '',
-        interimTranscript: '',
-        confidence: 0,
-      }));
-
-      recognition.start();
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+      }
     } catch (error) {
       console.error('Failed to start speech recognition:', error);
     }
-  }, [isSupported, initRecognition]);
+  }, [isSupported]);
 
   const stopListening = useCallback(() => {
     isManualStop.current = true;
-    
     if (recognitionRef.current) {
       recognitionRef.current.stop();
-      recognitionRef.current = null;
     }
   }, []);
 
@@ -155,15 +159,6 @@ export const useSpeechRecognition = () => {
       interimTranscript: '',
       confidence: 0,
     }));
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
   }, []);
 
   return {
