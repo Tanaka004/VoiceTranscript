@@ -51,18 +51,28 @@ export const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
 
       <div className="space-y-3">
         {/* Final transcript */}
-        {transcript && (
+        {/* {transcript && (
           <div className="text-white leading-relaxed">
             {transcript}
           </div>
-        )}
+        )} */}
 
         {/* Interim transcript */}
-        {interimTranscript && (
+        {/* {interimTranscript && (
           <div className="text-gray-400 italic leading-relaxed">
             {interimTranscript}
           </div>
-        )}
+        )} */}
+
+        <div
+  className="bg-gray-900/60 rounded p-4 mt-2 text-white text-base max-h-48 overflow-y-auto"
+>
+          {/* トランスクリプト本文をここに表示 */}
+          {transcript || <span className="text-gray-400">No transcript yet.</span>}
+          {interimTranscript && (
+            <span className="text-gray-400 italic">{interimTranscript}</span>
+          )}
+        </div>
 
         {/* Placeholder when no transcript */}
         {!transcript && !interimTranscript && (
