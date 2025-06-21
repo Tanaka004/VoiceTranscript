@@ -7,7 +7,7 @@ export const saveRecording = async (recording: Recording): Promise<void> => {
     const recordings = getStoredRecordings();
     recordings.push({
       ...recording,
-      audioBlob: undefined, // Don't store blob in localStorage
+      // audioBlob: undefined, // Don't store blob in localStorage
     });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(recordings));
     
@@ -128,4 +128,18 @@ export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+};
+
+export const clearAllRecordings = async (): Promise<void> => {
+  // localStorageの全データをクリア
+  localStorage.clear();
+  // IndexedDBのストア(audioBlobs)もクリア
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.clear();
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
 };

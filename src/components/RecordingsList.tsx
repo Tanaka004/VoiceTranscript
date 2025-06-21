@@ -2,11 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Play, Trash2, Download, FileText, Search, Calendar, Clock } from 'lucide-react';
 import { Recording } from '../types/Recording';
 import { getStoredRecordings, deleteRecording, formatDuration, formatFileSize } from '../utils/storage';
+import { clearAllRecordings } from '../utils/storage';
 
 interface RecordingsListProps {
   onPlayRecording: (recording: Recording) => void;
   refreshTrigger: number;
 }
+
+const handleClearAll = async () => {
+  if (window.confirm('本当に全ての録音データを削除しますか？')) {
+    await clearAllRecordings();
+    window.location.reload();
+  }
+};
 
 export const RecordingsList: React.FC<RecordingsListProps> = ({
   onPlayRecording,
@@ -210,6 +218,14 @@ export const RecordingsList: React.FC<RecordingsListProps> = ({
           ))}
         </div>
       )}
+      <div className="mb-4 flex justify-end">
+          <button
+            onClick={handleClearAll}
+            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition"
+          >
+            全録音データ削除
+          </button>
+        </div>
     </div>
   );
 };

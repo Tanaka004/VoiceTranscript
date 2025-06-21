@@ -101,5 +101,6 @@ export const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
         </div>
       )}
     </div>
+    
   );
 };
