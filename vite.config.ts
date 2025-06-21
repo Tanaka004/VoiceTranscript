@@ -7,4 +7,9 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  base: './', // Electronで相対パスを使用するため
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+  }
 });
