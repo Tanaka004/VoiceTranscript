@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { TranscriptionState } from '../types/Recording';
-import { saveRecording } from '../utils/storage';
 import { v4 as uuidv4 } from 'uuid';
+import { saveRecording, } from '../utils/storage';
 
 // Extend the Window interface to include webkitSpeechRecognition
 declare global {
@@ -21,7 +21,7 @@ export const useSpeechRecognition = () => {
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isManualStop = useRef(false);
-  const recId = useRef<string>(uuidv4());
+  let transcript = ''
 
   const isSupported = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
 
@@ -50,6 +50,7 @@ export const useSpeechRecognition = () => {
         const result = event.results[i];
         if (result.isFinal) {
           finalTranscript += result[0].transcript;
+          transcript = finalTranscript;
           confidence = result[0].confidence;
         } else {
           interimTranscript += result[0].transcript;
@@ -63,17 +64,7 @@ export const useSpeechRecognition = () => {
         confidence: confidence || prev.confidence,
       }));
 
-      // 保存頻度を下げたい場合はdebounce等を検討
-      saveRecording({
-        id: recId.current,
-        title: 'リアルタイム文字起こし',
-        createdAt: new Date(),
-        duration: 0,
-        transcription: finalTranscript || interimTranscript,
-        audioBlob: new Blob(),
-        audioUrl: '',
-        size: 0
-      });
+      
     };
 
     recognition.onerror = (event: any) => {
@@ -119,7 +110,22 @@ export const useSpeechRecognition = () => {
         }, 100);
       }
     };
-
+    // const recId = useRef<string>(uuidv4());
+    // const now = new Date();
+    // const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
+    // 保存頻度を下げたい場合はdebounce等を検討
+    // saveRecording({
+    //   id: recId.current,
+    //   title: `Transcript-${formattedDate}`,
+    //   createdAt: new Date(),
+    //   duration: 0,
+    //   transcription: transcript,
+    //   audioBlob: new Blob(),
+    //   audioUrl: '',
+    //   size: 0
+    // });
+    // transcript = ''
+    
     recognitionRef.current = recognition;
 
     return () => {
